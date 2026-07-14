@@ -5,6 +5,7 @@ import user from "./routes/user";
 import chat from "./routes/chat";
 import http from "http";
 import { startWebSocket } from "./webSocket";
+import path from "path";
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.get("/", (req,res) => {
 
 app.use("/user", user);
 app.use("/chat", chat);
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 const server = http.createServer(app);
 startWebSocket(server);

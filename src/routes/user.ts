@@ -3,6 +3,9 @@ import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import multer from "multer";
+import { verifyToken } from "./authMiddleware";
+import { verify } from "node:crypto";
 
 dotenv.config();
 
@@ -101,6 +104,56 @@ router.post("/signIn", async (req, res): Promise<any> => {
   } catch (err) {
     res.status(500).send({ msg: "Internal Server Error " + err });
     console.log(err);
+  }
+});
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/uploads");
+  },
+
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + "-" + file.originalname;
+
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage: storage });
+
+router.post("/update",verifyToken, upload.single("image"), async (req: any, res: any) => {
+  const { fname, lname, password, mobile } = req.body;
+  const userId = req.user.id;
+  try {
+    let query = "UPDATE user SET fname = ?, lname = ?";
+    const params: any[] = [fname, lname];
+
+    if (password && password.trim() !== "") {
+      const saltRounds = 10;
+      const hashedPwd = await bcrypt.hash(password, saltRounds);
+      query += ", password = ?";
+      params.push(hashedPwd);
+    }
+    query += " WHERE id = ?";
+    params.push(userId);
+    await pool.query(query, params);
+
+    if (req.file) {
+      const imagepath = "/uploads/" + req.file.filename;
+      
+      const [existing]: any = await pool.query("SELECT * FROM user_img WHERE user_id = ?", [userId]);
+      
+      if (existing.length > 0) {
+        await pool.query("UPDATE user_img SET profile_pic = ? WHERE user_id = ?", [imagepath, userId]);
+      } else {
+        await pool.query("INSERT INTO user_img (profile_pic, user_id) VALUES (?, ?)", [imagepath, userId]);
+      }
+    }
+
+    res.status(200).send({ msg: "Profile updated successfully" });
+  } catch (err) {
+    console.error("Update Error:", err);
+    res.status(500).send({ msg: "Internal Server Error", error: err });
   }
 });
 
