@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import user from "./routes/user";
+import chat from "./routes/chat";
+import http from "http";
+import { startWebSocket } from "./webSocket";
 
 dotenv.config();
 
@@ -16,7 +19,11 @@ app.get("/", (req,res) => {
 });
 
 app.use("/user", user);
+app.use("/chat", chat);
 
-app.listen(port, ()=> {
+const server = http.createServer(app);
+startWebSocket(server);
+
+server.listen(port, ()=> {
     console.log(`"API Running on http://localhost:${port}"`);
 })
