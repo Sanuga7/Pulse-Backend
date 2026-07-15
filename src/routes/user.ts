@@ -157,4 +157,53 @@ router.post("/update",verifyToken, upload.single("image"), async (req: any, res:
   }
 });
 
+router.post("/send-code", async(req, res): Promise<any> => {
+   try{
+    const {mobile} = req.body;
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const code = String(otp);
+   await pool.execute("UPDATE user SET reset_code = ? WHERE mobile = ?", [code, mobile]);
+   res.status(200).send({msg: "Reset Code Sent" + code});
+   }catch(err){
+    console.error("Server Error:", err);
+    res.status(500).send({ msg: "Internal Server Error", error: err });
+   }
+});
+
+router.post("/check-code", async (req, res): Promise<any> => {
+  try{
+    const {mobile, code} = req.body;
+    const [results]: any = await pool.execute("SELECT * FROM user WHERE mobile = ? AND reset_code = ?", [mobile, code]);
+    if(results.length === 0){
+      return res.status(403).send({msg: "Aceess denied Invalid reset code"});
+    }
+    res.status(200).send({msg: "Valid Code"});
+  }catch(err){
+    console.error("Server Error:", err);
+    res.status(500).send({ msg: "Internal Server Error", error: err });
+  }
+});
+
+router.post("/reset-password", async (req, res): Promise<any> => {
+  try{
+    const {mobile, password} = req.body;
+    if (!password || password.trim() === "") {
+      return res.status(403).send({ msg: "Password cannot be empty" });
+    }
+    console.log("Resetting password for:", mobile);
+    const saltRounds = 10;
+    const hashedPwd = await bcrypt.hash(password, saltRounds);
+    
+    pool.execute("UPDATE user SET password = ?, reset_code = NULL WHERE mobile = ?",
+      [hashedPwd, mobile]
+    );
+
+    res.status(200).send({msg: "Password Changed Successfully"});
+
+  }catch(err){
+    console.error("Server Error:", err);
+    res.status(500).send({ msg: "Internal Server Error", error: err });
+  }
+});
+
 export default router;
