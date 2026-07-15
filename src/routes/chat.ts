@@ -121,26 +121,27 @@ router.get("/search-contact", verifyToken,
   }
 );
 
-router.get("/load-chat", verifyToken, 
-  async (req: AuthRequest, res): Promise<any> => {
-    const id = req.query.id;
-    const myId = req.user.id;
+router.get("/load-chat", verifyToken, async (req: AuthRequest, res): Promise<any> => {
+  const id = req.query.id;
+  const myId = req.user.id;
 
-    const [chats]:any = await pool.execute("SELECT * FROM chat WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)",
-      [id,myId,id,myId]
-    );
+  const [chats]: any = await pool.execute(
+    "SELECT * FROM chat WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)",
+    [myId, id, id, myId]
+  );
 
-    if(chats.length === 0){
-      return res.status(200).send([]);
-    }
+  if (chats.length === 0) {
+    return res.status(200).send([]);
+  }
 
-    const chatId = chats[0].id;
+  const chatId = chats[0].id;
 
-    const [messages]:any = await pool.execute("SELECT * FROM message WHERE chat_id = ? ORDER by sent_at DESC", 
-      [chatId] 
-    );
+  const [messages]: any = await pool.execute(
+    "SELECT * FROM message WHERE chat_id = ? ORDER BY sent_at DESC",
+    [chatId]
+  );
 
-    res.status(200).send({msg: messages, chatId: chatId}); 
+  res.status(200).send({ msg: messages, chatId: chatId });
 });
 
 export default router;
